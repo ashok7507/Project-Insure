@@ -25,7 +25,7 @@ pipeline {
     	agent any
           steps {
        	withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
-            	sh "docker login -u $dockerHubUser -p $dockerHubPassword"
+            	sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
                 sh 'docker push ashok7507/newinsure:latest'
         }
       }
