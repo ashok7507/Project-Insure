@@ -22,21 +22,40 @@ pipeline {
         }
         
         stage('Docker Push') {
-    	agent any
-          steps {
-       	withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
-            	sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
-                sh 'docker push ashok7507/newinsure:latest'
+            agent any
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+                    sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
+                    sh 'docker push ashok7507/newinsure:latest'
+                }
+            }
         }
-      }
+        
+        stage('Code-Deploy') {
+            steps {
+                ansiblePlaybook credentialsId: 'ansible', installation: 'ansible', playbook: 'playbook.yml', vaultTmpPath: ''
+            }
+        }
+
+        // Kubernetes Deployment Stage
+        stage('K8s-Deploy') {
+            steps {
+                script {
+                    // Set up Kubernetes cluster context (ensure credentials and kubeconfig are available)
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh 'kubectl apply -f k8s/deployment.yaml'
+                        sh 'kubectl apply -f k8s/service.yaml'
+
+                        // If you're using Helm for deployment, you can use:
+                        // sh 'helm upgrade --install newinsure ./helm/newinsure --namespace default'
+
+                        // You can also check the status of the deployment
+                        sh 'kubectl rollout status deployment/newinsure'
+                    }
+                }
+            }
+        }
     }
-    
-      
-     stage('Code-Deploy') {
-        steps {
-           ansiblePlaybook credentialsId: 'ansible', installation: 'ansible', playbook: 'playbook.yml', vaultTmpPath: ''       
-        }
-      }
-   }
 }
+
 
