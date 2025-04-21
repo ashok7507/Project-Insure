@@ -1,10 +1,6 @@
 pipeline {
     agent any
-        
-    environment {
-    IMAGE_NAME = "ashok7507/insure"
-    IMAGE_TAG = "${BUILD_NUMBER}"
-    }
+    
     stages {
         stage('Code-Checkout') {
             steps {
@@ -21,7 +17,7 @@ pipeline {
         stage('Containerize the application'){
             steps { 
                echo 'Creating Docker image'
-               sh "docker build -t ashok7507/newinsure ."
+               sh "docker push ashok7507/newinsure:latest"
             }
         }
         
@@ -29,7 +25,7 @@ pipeline {
     	agent any
           steps {
        	withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
-            	sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPassword}"
+            	sh "sh 'docker login -u $dockerHubUser -p $dockerHubPassword'"
                 sh 'docker push ashok7507/newinsure:latest'
         }
       }
