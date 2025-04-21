@@ -1,7 +1,10 @@
 pipeline {
-    
-     agent any
-
+    agent any
+        
+    environment {
+    IMAGE_NAME = "ashok7507/insure"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    }
     stages {
         stage('Code-Checkout') {
             steps {
