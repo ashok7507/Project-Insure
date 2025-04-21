@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newinsure
+  labels:
+    app: newinsure
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: newinsure
+  template:
+    metadata:
+      labels:
+        app: newinsure
+    spec:
+      containers:
+      - name: newinsure-container
+        image: ashok7507/newinsure:latest
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Always
