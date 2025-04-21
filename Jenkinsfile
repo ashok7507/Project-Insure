@@ -17,7 +17,7 @@ pipeline {
         stage('Containerize the application'){
             steps { 
                echo 'Creating Docker image'
-               sh "docker build ashok7507/newinsure:latest ."
+               sh "docker build ashok7507/newinsure:latest "
             }
         }
         
