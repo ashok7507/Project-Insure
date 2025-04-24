@@ -1,60 +1,87 @@
 pipeline {
     agent any
-    
+
+    environment {
+        DOCKER_IMAGE = "ashok7507/newinsure:latest"
+        DOCKER_CREDENTIALS_ID = 'dockerhub-cred'
+        GIT_REPO_URL = 'https://github.com/ashok7507/Project-Insure.git'
+        GIT_CREDENTIALS_ID = 'github-cred'
+        KUBE_CREDENTIALS_ID = 'k8s-creds'
+        KUBE_NAMESPACE = '' // Set your Kubernetes namespace here
+        EMAIL_RECIPIENT = 'aashok.sbhosale@gmail.com'
+    }
+
     stages {
-        stage('Code-Checkout') {
+        stage('Code Checkout') {
             steps {
-               checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-cred', url: 'https://github.com/ashok7507/Project-Insure.git']])
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        credentialsId: "${GIT_CREDENTIALS_ID}",
+                        url: "${GIT_REPO_URL}"
+                    ]]
+                )
             }
         }
-        
-        stage('Code-Build') {
+
+        stage('Code Build') {
             steps {
-               sh 'mvn clean package'
+                sh 'mvn clean package'
             }
         }
-        
-        stage('Containerize the application'){
-            steps { 
-               echo 'Creating Docker image'
-               sh "docker build -t ashok7507/newinsure:latest ."
+
+        stage('Containerize the Application') {
+            steps {
+                echo 'Creating Docker image'
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
-        
+
         stage('Docker Push') {
-            agent any
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
-                    sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
-                    sh 'docker push ashok7507/newinsure:latest'
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${DOCKER_IMAGE}
+                    """
                 }
             }
         }
-        
-        stage('Code-Deploy') {
+
+        stage('Code Deploy with Ansible') {
             steps {
-                ansiblePlaybook credentialsId: 'ansible', installation: 'ansible', playbook: 'playbook.yml', vaultTmpPath: ''
+                ansiblePlaybook(
+                    credentialsId: 'ansible',
+                    installation: 'ansible',
+                    playbook: 'playbook.yml',
+                    vaultTmpPath: ''
+                )
             }
         }
-        
-        stage('K8s Deployment') {
+
+        stage('Kubernetes Deployment') {
             steps {
-                withKubeConfig([credentialsId: 'k8s-creds', namespace: KUBE_NAMESPACE]) {
+                withKubeConfig([credentialsId: "${KUBE_CREDENTIALS_ID}", namespace: "${KUBE_NAMESPACE}"]) {
                     sh """
-                    kubectl apply -f kubernetes/deployment.yaml
-                    kubectl apply -f kubernetes/service.yaml
+                        kubectl apply -f kubernetes/deployment.yaml
+                        kubectl apply -f kubernetes/service.yaml
                     """
                 }
             }
         }
     }
-    
+
     post {
         failure {
-            emailext body: 'Build Failed: ${BUILD_URL}',
-                    subject: 'CI/CD Pipeline Failure',
-                    to: 'your-email@example.com'
+            emailext(
+                body: "Build Failed: ${env.BUILD_URL}",
+                subject: "CI/CD Pipeline Failure - Build #${env.BUILD_NUMBER}",
+                to: "${EMAIL_RECIPIENT}"
+            )
         }
     }
 }
-
