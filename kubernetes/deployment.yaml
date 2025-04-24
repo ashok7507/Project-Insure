@@ -1,1 +1,19 @@
-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insure-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: insure-app
+  template:
+    metadata:
+      labels:
+        app: insure-app
+    spec:
+      containers:
+      - name: insure-app
+        image: ashok7507/project-insure:${BUILD_NUMBER}
+        ports:
+        - containerPort: 8080
