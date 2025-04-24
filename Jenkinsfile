@@ -2,6 +2,8 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE = "ashok7507/project-insure:${env.BUILD_NUMBER}"
+        IMAGE_NAME = 'ashok7507/project-insure'
+        IMAGE_TAG = '3'
         KUBE_NAMESPACE = "insure-app"
         REPO_URL = "https://github.com/ashok7507/Project-Insure.git"
     }
@@ -24,7 +26,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    docker.build(DOCKER_IMAGE).push()
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub') {
+                    def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                    app.push()
                 }
             }
         }
