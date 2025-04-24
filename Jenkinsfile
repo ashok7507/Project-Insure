@@ -1,61 +1,52 @@
 pipeline {
     agent any
+    environment {
+        DOCKER_IMAGE = "ashok7507/project-insure:${env.BUILD_NUMBER}"
+        KUBE_NAMESPACE = "insure-app"
+        REPO_URL = "https://github.com/ashok7507/Project-Insure.git"
+    }
     
     stages {
-        stage('Code-Checkout') {
+        stage('Checkout') {
             steps {
-               checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github', url: 'https://github.com/ashok7507/Project-Insure.git']])
+                git branch: 'main', 
+                url: env.REPO_URL,
+                credentialsId: 'github-cred'
             }
         }
         
-        stage('Code-Build') {
+        stage('Build') {
             steps {
-               sh 'mvn clean package'
+                sh 'mvn clean package'  # Modify for your build tool
             }
         }
         
-        stage('Containerize the application'){
-            steps { 
-               echo 'Creating Docker image'
-               sh "docker build -t ashok7507/newinsure:latest ."
-            }
-        }
-        
-        stage('Docker Push') {
-            agent any
+        stage('Docker Build & Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
-                    sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
-                    sh 'docker push ashok7507/newinsure:latest'
+                script {
+                    docker.build(DOCKER_IMAGE).push()
                 }
             }
         }
         
-        stage('Code-Deploy') {
+        stage('K8s Deployment') {
             steps {
-                ansiblePlaybook credentialsId: 'ansible', installation: 'ansible', playbook: 'playbook.yml', vaultTmpPath: ''
-            }
-        }
-
-        // Kubernetes Deployment Stage
-        stage('K8s-Deploy') {
-            steps {
-                script {
-                    // Set up Kubernetes cluster context (ensure credentials and kubeconfig are available)
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh 'kubectl apply -f k8s/deployment.yaml'
-                        sh 'kubectl apply -f k8s/service.yaml'
-
-                        // If you're using Helm for deployment, you can use:
-                        // sh 'helm upgrade --install newinsure ./helm/newinsure --namespace default'
-
-                        // You can also check the status of the deployment
-                        sh 'kubectl rollout status deployment/newinsure'
-                    }
+                withKubeConfig([credentialsId: 'k8s-creds', namespace: KUBE_NAMESPACE]) {
+                    sh """
+                    kubectl apply -f kubernetes/deployment.yaml
+                    kubectl apply -f kubernetes/service.yaml
+                    """
                 }
             }
         }
     }
+    
+    post {
+        failure {
+            emailext body: 'Build Failed: ${BUILD_URL}',
+                    subject: 'CI/CD Pipeline Failure',
+                    to: 'your-email@example.com'
+        }
+    }
 }
-
 
