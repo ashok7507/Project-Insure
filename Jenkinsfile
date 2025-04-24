@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Code-Checkout') {
             steps {
-               checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github', url: 'https://github.com/ashok7507/Project-Insure.git']])
+               checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-cred', url: 'https://github.com/ashok7507/Project-Insure.git']])
             }
         }
         
@@ -24,7 +24,7 @@ pipeline {
         stage('Docker Push') {
             agent any
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
                     sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
                     sh 'docker push ashok7507/newinsure:latest'
                 }
