@@ -1,35 +1,39 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_IMAGE = "ashok7507/project-insure:${env.BUILD_NUMBER}"
-        IMAGE_NAME = 'ashok7507/project-insure'
-        IMAGE_TAG = '3'
-        KUBE_NAMESPACE = "insure-app"
-        REPO_URL = "https://github.com/ashok7507/Project-Insure.git"
-    }
     
     stages {
-        stage('Checkout') {
+        stage('Code-Checkout') {
             steps {
-                git branch: 'main', 
-                url: env.REPO_URL,
-                credentialsId: 'github-cred'
+               checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github', url: 'https://github.com/ashok7507/Project-Insure.git']])
             }
         }
         
-        stage('Build') {
+        stage('Code-Build') {
             steps {
-                sh 'mvn clean package'  
+               sh 'mvn clean package'
             }
         }
         
-        stage('Docker Build & Push') {
+        stage('Containerize the application'){
+            steps { 
+               echo 'Creating Docker image'
+               sh "docker build -t ashok7507/newinsure:latest ."
+            }
+        }
+        
+        stage('Docker Push') {
+            agent any
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub') {
-                    def app = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                    app.push()
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+                    sh 'docker login -u $dockerHubUser -p $dockerHubPassword'
+                    sh 'docker push ashok7507/newinsure:latest'
                 }
+            }
+        }
+        
+        stage('Code-Deploy') {
+            steps {
+                ansiblePlaybook credentialsId: 'ansible', installation: 'ansible', playbook: 'playbook.yml', vaultTmpPath: ''
             }
         }
         
