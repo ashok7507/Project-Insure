@@ -4,6 +4,8 @@ pipeline {
     environment {
         DOCKER_IMAGE = "ashok7507/newinsure:latest"
         DOCKER_CREDENTIALS_ID = 'dockerhub-cred'
+        DOCKER_USER = 'ashok7507'
+        DOCKER_PASS = 'ashok-bhosale7#7507$@'
         GIT_REPO_URL = 'https://github.com/ashok7507/Project-Insure.git'
         GIT_CREDENTIALS_ID = 'github-cred'
         KUBE_CREDENTIALS_ID = 'k8s-creds'
